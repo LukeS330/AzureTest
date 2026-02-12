@@ -66,11 +66,23 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_15D27D28F13B40479D4C8674EAB822C4 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_56B53B9DB76E48BAB5BF927949DAFF47 }}
 
-      - name: 'Deploy to Azure Web App'
-        uses: azure/webapps-deploy@v3
-        id: deploy-to-webapp
-        with:
-          app-name: 'VUA-WEB-Dev'
-          slot-name: 'Production'
-          package: release.zip
+      - name: Resolve resource group
+        id: resolve-rg
+        run: |
+          RG=$(az webapp list --query "[?name=='VUA-WEB-Dev'].resourceGroup | [0]" -o tsv)
+          if [ -z "$RG" ]; then
+            echo "Could not find resource group for app VUA-WEB-Dev"
+            exit 1
+          fi
+          echo "resource_group=$RG" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy zip via Azure CLI
+        run: |
+          az webapp deploy \
+            --resource-group "${{ steps.resolve-rg.outputs.resource_group }}" \
+            --name "VUA-WEB-Dev" \
+            --src-path "release.zip" \
+            --type zip \
+            --clean true \
+            --restart true
           
